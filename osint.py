@@ -1,43 +1,45 @@
-import requests
-import pyfiglet
 import os
+import requests
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
-# Screen clear karne ke liye
-os.system('clear')
+TOKEN = os.getenv("TOKEN")
 
-# 1. Bade words mein title
-title = pyfiglet.figlet_format("BY CodeDebug")
-print(title)
+# Start command
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("📱 Send Indian phone number (without +91)")
 
-# 2. Channel link
-print("------------------------------------------")
-print("Made By @CodeDebug")
-print("------------------------------------------\n")
+# Message handler (number input)
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    phone_number = update.message.text.strip()
 
-# Input number
-phone_number = input("Enter Indian Number (without +91): ")
+    await update.message.reply_text("🔍 Searching details...")
 
-# API Details
-api_url = f"https://numbeer-info.vercel.app/api/lookup?numbere={phone_number}&key=SH4DAW-D4DY"
+    api_url = f"https://numbeer-info.vercel.app/api/lookup?numbere={phone_number}&key=SH4DAW-D4DY"
 
-print("\n[+] Searching details, please wait...")
+    try:
+        response = requests.get(api_url)
 
-try:
-    response = requests.get(api_url)
-    
-    if response.status_code == 200:
-        data = response.json()
-        
-        # Data print karein (API response ke keys ke hisaab se adjust karein)
-        print("\n--- RESULTS ---")
-        for key, value in data.items():
-            print(f"{key.upper()}: {value}")
-    else:
-        print("\n[!] Error: API se connect nahi ho paya ya key invalid hai.")
+        if response.status_code == 200:
+            data = response.json()
 
-except Exception as e:
-    print(f"\n[!] Kuch gadbad hui: {e}")
+            result = "\n📊 *RESULTS:*\n"
+            for key, value in data.items():
+                result += f"\n🔹 {key.upper()}: {value}"
 
-print("\n------------------------------------------")
-print("Task Completed!")
+            await update.message.reply_text(result, parse_mode="Markdown")
 
+        else:
+            await update.message.reply_text("❌ API error or invalid key")
+
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Error: {e}")
+
+# App setup
+app = ApplicationBuilder().token(TOKEN).build()
+
+app.add_handler(CommandHandler("start", start))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+print("Bot running...")
+app.run_polling()
